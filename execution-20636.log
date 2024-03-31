@@ -1,0 +1,6 @@
+2024-03-31 11:13:58,835 [Evaluate    ] INFO     Loading dayeon agent to memory...
+2024-03-31 11:13:58,835 [Evaluate    ] ERROR    Loading failed!
+Traceback (most recent call last):
+  File "c:\Users\SAMSUNG\OneDrive\¹®¼­\GitHub\catan\evaluate.py", line 56, in evaluate_algorithm
+    agent = module.Agent()
+AttributeError: module 'agents.dayeon' has no attribute 'Agent'

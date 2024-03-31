@@ -1,0 +1,6 @@
+2024-03-31 11:57:11,313 [Evaluate    ] INFO     Loading skeleton agent to memory...
+2024-03-31 11:57:11,313 [Evaluate    ] ERROR    Loading failed!
+Traceback (most recent call last):
+  File "c:\Users\SAMSUNG\OneDrive\¹®¼­\GitHub\catan\evaluate.py", line 56, in evaluate_algorithm
+    agent = module.Agent()
+TypeError: __init__() missing 1 required positional argument: 'game_board'

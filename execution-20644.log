@@ -1,3 +1,6 @@
-2024-03-31 10:32:10,586 [Evaluate    ] INFO     Loading default2 agent to memory...
-2024-03-31 10:32:10,587 [Evaluate    ] INFO     Begin to search using default2 agent.
-2024-03-31 10:32:10,869 [Evaluate    ] INFO     Search finished for default2, using 4MB during search.
+2024-03-31 11:13:59,489 [Evaluate    ] INFO     Loading dayeon agent to memory...
+2024-03-31 11:13:59,489 [Evaluate    ] ERROR    Loading failed!
+Traceback (most recent call last):
+  File "c:\Users\SAMSUNG\OneDrive\¹®¼­\GitHub\catan\evaluate.py", line 56, in evaluate_algorithm
+    agent = module.Agent()
+AttributeError: module 'agents.dayeon' has no attribute 'Agent'

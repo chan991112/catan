@@ -1,3 +1,10 @@
-2024-03-31 09:51:03,433 [Evaluate    ] INFO     Loading default agent to memory...
-2024-03-31 09:51:03,433 [Evaluate    ] INFO     Begin to search using default agent.
-2024-03-31 09:51:03,763 [Evaluate    ] INFO     Search finished for default, using 6MB during search.
+2024-03-31 11:57:09,928 [root        ] INFO     Trial 0 begins!
+2024-03-31 11:57:10,495 [root        ] INFO     Reading results at Trial 0
+2024-03-31 11:57:10,516 [root        ] INFO     Trial 1 begins!
+2024-03-31 11:57:11,055 [root        ] INFO     Reading results at Trial 1
+2024-03-31 11:57:11,081 [root        ] INFO     Trial 2 begins!
+2024-03-31 11:57:11,659 [root        ] INFO     Reading results at Trial 2
+2024-03-31 11:57:11,683 [root        ] INFO     Trial 3 begins!
+2024-03-31 11:57:12,265 [root        ] INFO     Reading results at Trial 3
+2024-03-31 11:57:12,281 [root        ] INFO     Trial 4 begins!
+2024-03-31 11:57:12,856 [root        ] INFO     Reading results at Trial 4
