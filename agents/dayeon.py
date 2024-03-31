@@ -82,7 +82,7 @@ class Agent:
         """
         possible_actions = []
         resources = board.get_resource_cards()
-        if resources['Lumber'] > 0:  # Example resource check
+        if resources['Brick'] > 0 and resources['Lumber'] > 0: 
             for road_location in board.get_applicable_roads():
                 possible_actions.append(ROAD(road_location))
         return possible_actions

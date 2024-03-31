@@ -1,3 +1,3 @@
-2024-03-31 11:16:00,486 [Evaluate    ] INFO     Loading default2 agent to memory...
-2024-03-31 11:16:00,486 [Evaluate    ] INFO     Begin to search using default2 agent.
-2024-03-31 11:16:00,676 [Evaluate    ] INFO     Search finished for default2, using 4MB during search.
+2024-03-31 12:11:17,778 [Evaluate    ] INFO     Loading dayeon agent to memory...
+2024-03-31 12:11:17,778 [Evaluate    ] INFO     Begin to search using dayeon agent.
+2024-03-31 12:11:17,778 [Evaluate    ] INFO     Search finished for dayeon, using 0MB during search.
