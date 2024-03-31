@@ -9,10 +9,12 @@ from queue import LifoQueue
 def _make_action_sequence(state: dict) -> List[Action]:
     # If there is no parent specified in the state, then it is an initial action.
     if 'parent' not in state:
+        print('no parent')
         return []
 
     # Move back to the parent state, and read the action sequence until that state.
     parental_state, parent_action = state['parent']
+    print('Good')
     # Append the required action to reach the current state at the end of the parent's action list.
     return _make_action_sequence(parental_state) + [parent_action]
 
@@ -32,7 +34,14 @@ class Agent:  # Do not change the name of this class!
         # Set up frontiers as LIFO Queue
         frontier = LifoQueue()
         # Read initial state
-        initial_state = board.get_initial_state()
+        init_state = board.get_initial_state()
+        state = board.simulate_action(init_state,PASS())
+        board.set_to_state(state)
+        for i in range (3):
+                state = board.simulate_action(state,PASS())
+                board.set_to_state(state)
+
+        initial_state = state
         frontier.put(initial_state)
         reached = [initial_state['state_id']]
 
@@ -48,12 +57,10 @@ class Agent:  # Do not change the name of this class!
         
         id=initial_state['player_id']
         print(id)
-        # for coord,info in initial_state['board']['intersections'].items():
-        #     if info['owner'] == id:
-        #         s1,s2=initial_state['board']['intersections']['coord']
-        # print(s1,s2)
+       
         a=board.get_applicable_roads()
         print(a)
+
         # Until the frontier is nonempty,
         num=0
         while not frontier.empty():
@@ -76,6 +83,7 @@ class Agent:  # Do not change the name of this class!
                 for i in range(len(a)):
                     for_state=board.simulate_action(initial_state,ROAD(a[i]))
                     board.set_to_state(for_state)
+                    
                     b=board.get_applicable_roads()
                     a_set = set(a)
                     b_set = set(b)
@@ -83,17 +91,19 @@ class Agent:  # Do not change the name of this class!
                     c=list(c)
                     if len(c) !=0:
                         possible_actions.append(ROAD(a[i]))
-            #이후의 상황
-            else:
-                R=board.get_resource_cards()
-                L=R['Lumber']
-                                
+            #이후의 상황            
+            
+            else:        
+
                 if 'parent' in state:
-                    parent_state=state['parent_state']
-        
+                    parent=state['parent']
+                    
+                    parent_state =parent[0]
+                    
                 else:
                     print("No parent node information available")
                 
+            
                 now_route=board.get_applicable_roads()
                 
                 board.set_to_state(parent_state)
@@ -103,38 +113,52 @@ class Agent:  # Do not change the name of this class!
                 b_set = set(before_route)
                 right_path = n_set - b_set
                 right_path=list(right_path)
+                
+                
                 for i in range(len(right_path)):
                     possible_actions.append(ROAD(right_path[i]))
-                    possible_actions.append(PASS())
-
-                
-                
-                
-                
-
-
+                    
+        
             # Expand next states
+
+
             for action in possible_actions:
                 child = board.simulate_action(state, action)
-
+                
                 # If the next state is already reached, then pass to the next action
                 if child['state_id'] in reached:
                     continue
 
                 # Add parent information to the next state
                 child['parent'] = (state, action)
-                child['parent_state']=state
-                child['parent_action']=action
                 frontier.put(child)
                 reached.append(child['state_id'])
+
             
-            print('frontier: {}'.format(frontier.qsize()))
         
             print('possible_actions: {}'.format(possible_actions))
+            print('frontier: {}'.format(frontier.qsize()))
+
             L=board.get_longest_route()
             R=board.get_resource_cards()
             print(R)
             print('끝 전에 길이{}'.format(L))
+            print(board.is_game_end())
+
             print('loop 끝')
+            if L ==10 or frontier.empty():
+                final_1=board.simulate_action(state, UPGRADE(s1))
+                board.set_to_state(final_1)
+                final_1['parent'] = (state, UPGRADE(s1))
+                frontier.put(final_1)
+                final_2=frontier.get()
+                final_3=board.simulate_action(final_2,UPGRADE(s2))
+                board.set_to_state(final_3)
+                final_3['parent'] = (final_2, UPGRADE(s2))
+                frontier.put(final_3)
+                print('final_3 id')
+                print(final_3['state_id'])
+                print('end..')
+                
         # Return empty list if search fails.
         return []
