@@ -4,19 +4,18 @@ from typing import List
 from action import *
 from board import GameBoard, RESOURCES
 from queue import LifoQueue
-
+from random import shuffle
 
 def _make_action_sequence(state: dict) -> List[Action]:
     # If there is no parent specified in the state, then it is an initial action.
     if 'parent' not in state:
-        print('no parent')
         return []
 
     # Move back to the parent state, and read the action sequence until that state.
     parental_state, parent_action = state['parent']
-    print('Good')
+    print(parent_action)
     # Append the required action to reach the current state at the end of the parent's action list.
-    return _make_action_sequence(parental_state) + [parent_action]
+    return _make_action_sequence(parental_state) + [parent_action]+[PASS()]
 
 
 class Agent:  # Do not change the name of this class!
@@ -56,7 +55,7 @@ class Agent:  # Do not change the name of this class!
 
         
         id=initial_state['player_id']
-        print(id)
+        
        
         a=board.get_applicable_roads()
         print(a)
@@ -65,16 +64,17 @@ class Agent:  # Do not change the name of this class!
         num=0
         while not frontier.empty():
             num=num+1
-            print('\n')
-            print('loop {} 시작'.format(num))
+            
+            
             # Read a state to search further
             state = frontier.get()
             #print(state['state_id'])
             board.set_to_state(state)
-            
-            # If it is the game end, then read action sequences by back-tracing the actions.
+
             if board.is_game_end():
                 return _make_action_sequence(state)
+            # If it is the game end, then read action sequences by back-tracing the actions.
+            
 
             possible_actions = []
             #첫 상황
@@ -89,7 +89,9 @@ class Agent:  # Do not change the name of this class!
                     b_set = set(b)
                     c = b_set - a_set
                     c=list(c)
+                    len(a)
                     if len(c) !=0:
+                        shuffle(a)
                         possible_actions.append(ROAD(a[i]))
             #이후의 상황            
             
@@ -114,7 +116,7 @@ class Agent:  # Do not change the name of this class!
                 right_path = n_set - b_set
                 right_path=list(right_path)
                 
-                
+                board.set_to_state(state)
                 for i in range(len(right_path)):
                     possible_actions.append(ROAD(right_path[i]))
                     
@@ -141,11 +143,8 @@ class Agent:  # Do not change the name of this class!
 
             L=board.get_longest_route()
             R=board.get_resource_cards()
-            print(R)
-            print('끝 전에 길이{}'.format(L))
-            print(board.is_game_end())
+           
 
-            print('loop 끝')
             if L ==10 or frontier.empty():
                 final_1=board.simulate_action(state, UPGRADE(s1))
                 board.set_to_state(final_1)
