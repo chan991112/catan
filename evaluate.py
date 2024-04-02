@@ -1,265 +1,223 @@
-# Package for logging your execution
-import logging
-import os
-# Package for random seed control
-import random
-# A dictionary class which can set the default value
-from collections import defaultdict
-# Package for runtime importing
-from importlib import import_module
-# Package for multiprocessing (evaluation will be done with multiprocessing)
-from multiprocessing import Process, Queue
-# Querying function for the number of CPUs
-from os import cpu_count
-# Package for file handling
 from pathlib import Path
-from time import time, sleep
-# Package for writing exceptions
-from traceback import format_exc
+from typing import List
 
-# Package for problem definitions
-from board import *
-# Function for loading your agents
-from agents.load import get_all_agents
+from action import *
+from board import GameBoard, RESOURCES
+from queue import LifoQueue
+from random import shuffle
 
-#: Size of MB in bytes
-MEGABYTES = 1024 ** 2
-#: The number of games to run the evaluation
-GAMES = 5
-#: LIMIT FOR A SINGLE EXECUTION, 60 minutes
-TIME_LIMIT = 1000 * 60 * 60
+def _make_action_sequence(state: dict) -> List[Action]:
+    # If there is no parent specified in the state, then it is an initial action.
+    if 'parent' not in state:
+        return []
 
-# Set a random seed
-random.seed(5606)
+    # Move back to the parent state, and read the action sequence until that state.
+    parental_state, parent_action = state['parent']
+    
+    # Append the required action to reach the current state at the end of the parent's action list.
+    return _make_action_sequence(parental_state) + [parent_action]+[PASS()]
 
 
-def evaluate_algorithm(agent_name, initial_state, result_queue: Queue):
+class Agent:  # Do not change the name of this class!
     """
-    Run the evaluation for an agent.
-    :param agent_name: Agent to be evaluated
-    :param initial_state: Initial state for the test
-    :param result_queue: A multiprocessing Queue to return the execution result.
+    An agent class, with DFS
     """
-    # Set up the given problem
-    problem = GameBoard()
-    problem._initialize()
-    problem.set_to_state(initial_state)
+    def search_for_longest_route(self, board: GameBoard) -> List[Action]:
+        """
+        This algorithm search for an action sequence that makes the longest trading route at the end of the game.
+        If there's no solution, then return an empty list.
 
-    # Log initial memory size
-    init_memory = problem.get_current_memory_usage()
-    logger = logging.getLogger('Evaluate')
+        :param board: Game board to manipulate
+        :return: List of actions
+        """
+        # Set up frontiers as LIFO Queue
+        frontier = LifoQueue()
+        # Read initial state
+        init_state = board.get_initial_state()
+        state = board.simulate_action(init_state,PASS())
+        board.set_to_state(state)
+        for i in range (3):
+                state = board.simulate_action(state,PASS())
+                board.set_to_state(state)
 
-    # Initialize an agent
-    try:
-        logger.info(f'Loading {agent_name} agent to memory...')
-        module = import_module(f'agents.{agent_name}')
-        agent = module.Agent()
-    except Exception as e:
-        # When agent loading fails, send the failure log to main process.
-        failure = format_exc()
-        logger.error('Loading failed!', exc_info=e)
-        result_queue.put((agent_name, failure, 0, 0, float('inf')))
-        return
+        initial_state = state
+        frontier.put(initial_state)
+        reached = [initial_state['state_id']]
 
-    # Do search
-    solution = None
-    failure = None  # Record for Performance measure I
-    longest_route = 0  # Record for Performance measure III
-    num_actions = float('inf')  # Record for Performance measure IV
+        #처음 좌표 가져오기
+        id=initial_state['player_id']
+        s=[]
+        
+        for coord,info in initial_state['board']['intersections'].items():
+            if info['owner'] == id:
+                s.append(coord)
+        s1,s2=s[0],s[1]
 
-    logger.info(f'Begin to search using {agent_name} agent.')
-    try:
-        solution = agent.search_for_longest_route(problem)
-        assert type(solution) is list, 'Solution should be a list!'
-    except:
-        failure = format_exc()
+        
+        id=initial_state['player_id']
+        
+       
+        a=board.get_applicable_roads()
+        
 
-    # Get maximum memory usage during search (Performance measure II)
-    max_memory_usage = int(max(0, problem.get_max_memory_usage() - init_memory) / MEGABYTES)
-    logger.info(f'Search finished for {agent_name}, using {max_memory_usage}MB during search.')
+        # Until the frontier is nonempty,
+        num=0
+        while not frontier.empty():
+            num=num+1
+            
+            
+            # Read a state to search further
+            state = frontier.get()
+            
+            board.set_to_state(state)
 
-    # Execute the solution for evaluation
-    if solution is not None:
-        try:
-            problem.simulate_action(initial_state, *solution)
-            longest_route = problem.get_longest_route()  # Performance measure III
-            num_actions = len(solution)  # Performance measure IV
-            is_end = problem.is_game_end()  # Check whether this is the game's end.
+            if board.is_game_end():
+                return _make_action_sequence(state)
+            # If it is the game end, then read action sequences by back-tracing the actions.
+            
 
-            if not is_end:
-                if failure:
-                    failure = failure + '; '
+            possible_actions = []
+            #첫 상황
+            if state == initial_state:
+                a=board.get_applicable_roads()
+                for i in range(len(a)):
+                    for_state=board.simulate_action(initial_state,ROAD(a[i]))
+                    board.set_to_state(for_state)
+                    
+                    b=board.get_applicable_roads()
+                    a_set = set(a)
+                    b_set = set(b)
+                    c = b_set - a_set
+                    c=list(c)
+                    len(a)
+                    if len(c) !=0:
+                        
+                        possible_actions.append(ROAD(a[i]))
+            #이후의 상황            
+            
+            else:        
+
+                if 'parent' in state:
+                    parent=state['parent']
+                    
+                    parent_state =parent[0]
+                    
                 else:
-                    failure = ''
-                failure += 'The solution does not reach a goal state!'
-        except:
-            failure = format_exc()
+                    print("No parent node information available")
+                
+            
+                now_route=board.get_applicable_roads()
+                now_longest = board.get_longest_route()
 
-    if IS_DEBUG:
-        logger.debug(f'Execution Result: Failure {not not failure}, {max_memory_usage}MB, '
-                     f'route with {longest_route} blocks, {num_actions} actions.')
-    result_queue.put((agent_name, failure, max_memory_usage, longest_route, num_actions))
+                #s1 s2가 연결될 수 있으면 연결하도록 하는 부분
+                connecting_road=[]
+                
+                for i in range(len(now_route)):
+                    connected_state = board.simulate_action(state, ROAD(now_route[i]))
+                  
+                    board.set_to_state(connected_state)
+                  
+                    new_longest = board.get_longest_route()
+                    
+                    #연결이 되었을 때
+                    if new_longest-now_longest == 2:
+                        connecting_road.append(now_route[i])
+                        
+                        
+                if len(connecting_road) != 0:
+                    board.set_to_state(state)
+                    possible_actions.append(ROAD(connecting_road[0]))
+                    L= board.get_longest_route()
+                    
 
+                    for action in possible_actions:
+                        child = board.simulate_action(state, action)
+                        if child['state_id'] in reached:
+                            continue
 
-# Main function
-if __name__ == '__main__':
-    # Problem generator for the same execution
-    prob_generator = GameBoard()
-    # List of all agents
-    all_agents = get_all_agents()
-
-    # Performance measures
-    failures = defaultdict(list)  # This will be counted across different games
-    memory_ranksum = defaultdict(list)  # This will be computed as sum of rank across different games
-    route_ranksum = defaultdict(list)  # This will be computed as sum of rank across different games
-    act_ranksum = defaultdict(list)  # This will be computed as sum of rank across different games
-    last_execution = defaultdict(lambda: (0, 0, float('inf')))
-
-    def _compute_rank(sort, reverse=False):
-        """
-        Compute ranking
-
-        :param sort: List of (key, value)
-        :return: List of (key, ranks)
-        """
-        rank_key = None
-        rank = []
-        for i, (agent, _rank_key_i) in enumerate(sorted(sort, key=lambda t: t[1], reverse=reverse)):
-            # Manage ties
-            if rank_key != _rank_key_i:
-                rank.append((agent, i + 1))
-                rank_key = _rank_key_i
-            else:
-                rank.append((agent, rank[-1][1]))
-
-        return rank
+                        child['parent'] = (state, action)
+                        frontier.put(child)
+                        reached.append(child['state_id'])
 
 
-    def _print(t):
-        """
-        Helper function for printing rank table
-        :param t: Game trial number
-        """
+                    state = frontier.get()
+                    board.set_to_state(state)
+                    a=board.get_applicable_roads()
+                    possible_actions=[]
+                    L= board.get_longest_route()
+                   
+                    
+                    for i in range(len(a)):
+                       
+                        for_state=board.simulate_action(state,ROAD(a[i]))
+                        board.set_to_state(for_state)
+                        
+                        b=board.get_applicable_roads()
+                        a_set = set(a)
+                        b_set = set(b)
+                        c = b_set - a_set
+                        
+                        c=list(c)
+                        
+                        
+                        if len(c) !=0:
+                            
+                            possible_actions.append(ROAD(a[i]))
+                            L=board.get_longest_route()
+                            
+                        
+                else:
+                    
+                    board.set_to_state(parent_state)
+                    before_route=board.get_applicable_roads()
+                    
+                    n_set = set(now_route)
+                    b_set = set(before_route)
+                    right_path = n_set - b_set
+                    right_path=list(right_path)
+                    
+                    board.set_to_state(state)
+                    for i in range(len(right_path)):
+                        possible_actions.append(ROAD(right_path[i]))
+                    
+            
+            # Expand next states
+            L=board.get_longest_route()
+            
 
-        # Print header
-        print(f'\nCurrent game trial: #{t}')
-        print(f' StudentID    | #Failure  MemNow [RankSum]  RouteNow [RankSum]  Action [RankSum] |'
-              f' Rank  Percentile')
-        print('=' * 14 + '|' + '=' * 66 + '|' + '=' * 17)
-
-        # Sort agents by performance measures
-        for_ranking = [(k, (len(failures[k]),  # Failure in ascending order
-                            sum(memory_ranksum[k]),  # Memory usage (rank sum) in ascending order
-                            sum(route_ranksum[k]),  # Longest route (rank sum) in ascending order
-                            sum(act_ranksum[k])))  # Number of actions (rank sum) in ascending order
-                       for k in all_agents]
-
-        for agent, rank in _compute_rank(for_ranking):
-            # Name print option
-            key_print = agent if len(agent) < 13 else agent[:9] + '...'
-            # Compute percentile
-            percentile = int(rank / len(for_ranking) * 100)
-            # Print a row
-            print(f' {key_print:12s} | {len(failures[agent]):8d} '
-                  f' {last_execution[agent][0]:4d}MB [{sum(memory_ranksum[agent]):7d}] '
-                  f' L= {last_execution[agent][1]:5d} [{sum(route_ranksum[agent]):7d}] '
-                  f' {last_execution[agent][2]:6.0f} [{sum(act_ranksum[agent]):7d}] |'
-                  f' {rank:4d}  {percentile:3d}th/100')
-
-            # Write-down the failures
-            with Path(f'./failure_{agent}.txt').open('w+t') as fp:
-                fp.write('\n\n'.join(failures[agent]))
-
-    # Start evaluation process (using multi-processing)
-    process_results = Queue(len(all_agents) * 2)
-    process_count = max(cpu_count() - 2, 1)
-
-    def _execute(prob, agent_i):
-        """
-        Execute an evaluation for an agent with given initial state.
-        :param prob: Initial state for a problem
-        :param agent_i: Agent
-        :return: A process
-        """
-        proc = Process(name=f'EvalProc', target=evaluate_algorithm, args=(agent_i, prob, process_results), daemon=True)
-        proc.start()
-        proc.agent = agent_i  # Make an agent tag for this process
-        return proc
-
-
-    def _read_result(res_queue, exceeds):
-        """
-        Read evaluation result from the queue.
-        :param res_queue: Queue to read
-        :param exceeds: failure message for agents who exceeded limits
-        """
-        while not res_queue.empty():
-            agent_i, failure_i, mem_i, route_i, act_i = res_queue.get()
-            if failure_i is None and not (agent_i in exceeds):
-                last_execution[agent_i] = mem_i, route_i, act_i
-            else:
-                last_execution[agent_i] = 0, 0, float('inf')
-                failures[agent_i].append(failure_i if failure_i else exceeds[agent_i])
-
-
-    for trial in range(GAMES):
-        # Clear all previous results
-        last_execution.clear()
-        while not process_results.empty():
-            process_results.get()
-
-        # Generate new problem
-        prob_spec = prob_generator._initialize()
-        logging.info(f'Trial {trial} begins!')
-
-        # Execute agents
-        processes = []
-        agents_to_run = all_agents.copy()
-        random.shuffle(agents_to_run)
-
-        exceed_limit = {}  # Timeout limit
-        while agents_to_run or processes:
-            # If there is a room for new execution, execute new thing.
-            if agents_to_run and len(processes) < process_count:
-                alg = agents_to_run.pop()
-                processes.append((_execute(prob_spec, alg), time()))
-
-            new_proc_list = []
-            for p, begin in processes:
-                if not p.is_alive():
+            for action in possible_actions:
+                child = board.simulate_action(state, action)
+                
+                # If the next state is already reached, then pass to the next action
+                if child['state_id'] in reached:
                     continue
-                # For each running process, check for timeout
-                if begin + TIME_LIMIT < time():
-                    p.terminate()
-                    exceed_limit[p.agent] = \
-                        f'Process is running more than {TIME_LIMIT} sec, from ts={begin}; now={time()}'
-                    logging.info(f'[TIMEOUT] {p.agent} / '
-                                 f'Process is running more than {TIME_LIMIT} sec, from ts={begin}; now={time()}')
-                else:
-                    new_proc_list.append((p, begin))
 
-            # Prepare for the next round
-            processes = new_proc_list
-            # Read result from queue
-            _read_result(process_results, exceed_limit)
+                # Add parent information to the next state
+                child['parent'] = (state, action)
 
-            if len(processes) >= process_count:
-                # Wait for one seconds
-                sleep(1)
+                frontier.put(child)
 
-        # Read results
-        logging.info(f'Reading results at Trial {trial}')
-        _read_result(process_results, exceed_limit)
+                reached.append(child['state_id'])
+                
 
-        # Sort the results for each performance criteria and give ranks to agents
-        mem_ranks = dict(_compute_rank([(k, last_execution[k][0]) for k in all_agents]))
-        rou_ranks = dict(_compute_rank([(k, last_execution[k][1]) for k in all_agents], reverse=True))
-        act_ranks = dict(_compute_rank([(k, last_execution[k][2]) for k in all_agents]))
+           
+            L=board.get_longest_route()
+           
 
-        # Store rankings
-        for key in all_agents:
-            memory_ranksum[key].append(mem_ranks[key])
-            route_ranksum[key].append(rou_ranks[key])
-            act_ranksum[key].append(act_ranks[key])
-
-        _print(trial)
+            if L ==10 or frontier.empty():
+                state=frontier.get()
+                final_1=board.simulate_action(state, UPGRADE(s1))
+                board.set_to_state(final_1)
+                L=board.get_longest_route()
+                
+                final_1['parent'] = (state, UPGRADE(s1))
+                frontier.put(final_1)
+                final_2=frontier.get()
+                final_3=board.simulate_action(final_2,UPGRADE(s2))
+                board.set_to_state(final_3)
+                final_3['parent'] = (final_2, UPGRADE(s2))
+                frontier.put(final_3)
+                
+                
+        # Return empty list if search fails.
+        return []
